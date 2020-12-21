@@ -210,7 +210,7 @@ public void OnPluginStart()
 	
 	g_kredishowtype = CreateConVar("sm_jbmenu_kredi_gosteris", "0", "!jb Yazılınca oyuncunun kredisini? 0 = Sadece Kendi | 1 = Herkes", 0, true, 0.0, true, 1.0);
 	
-	AutoExecConfig(true, "Jbmenu");
+	AutoExecConfig(true, "Jbmenu", "ByDexter");
 	
 	for (int i = 1; i <= MaxClients; i++)if (IsValidClient(i))
 		OnClientCookiesCached(i);
@@ -307,26 +307,19 @@ public Action Command_JBDuzelt(int client, int args)
 		{
 			char arg2[192];
 			GetCmdArg(2, arg2, sizeof(arg2));
-			if (StringToInt(arg2) <= 0)
+			if (!IsValidClient(target))
 			{
-				ReplyToCommand(client, "[SM] 0'dan büyük bir değer girmelisin!");
+				ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
 				return Plugin_Handled;
 			}
 			else
 			{
-				if (!IsValidClient(target))
-				{
-					ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
-					return Plugin_Handled;
-				}
-				else
-				{
-					char sBuffer[512];
-					FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(arg2));
-					Cookie_Kredi.Set(client, sBuffer);
-					PrintToChatAll("[SM] \x10%N \x01admin \x10%N \x01kişisinin TLsini \x04%d \x01olarak düzeltti!", client, target, StringToInt(arg2));
-					return Plugin_Handled;
-				}
+				char sBuffer[512];
+				Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
+				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(arg2));
+				Cookie_Kredi.Set(target, sBuffer);
+				PrintToChatAll("[SM] \x10%N \x01admin \x10%N \x01kişisinin TLsini \x04%d \x01olarak düzeltti!", client, target, StringToInt(arg2));
+				return Plugin_Handled;
 			}
 		}
 	}
@@ -1824,7 +1817,7 @@ stock void EkranTitreme(int client, float Amplitude, float Radius, float Duratio
 	}
 }
 
-stock bool IsValidClient(int client, bool nobots = false)
+stock bool IsValidClient(int client, bool nobots = true)
 {
 	if (client <= 0 || client > MaxClients || !IsClientConnected(client) || (nobots && IsFakeClient(client)))
 	{
