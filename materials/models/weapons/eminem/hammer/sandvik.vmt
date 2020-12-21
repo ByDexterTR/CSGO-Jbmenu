@@ -1,0 +1,21 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/weapons/eminem/hammer/sandvik"
+	"$bumpmap" "models/weapons/eminem/hammer/sandvik_normal"
+	
+	
+	// PHONG SHADING
+	$phong                      1
+	$phongboost                 2
+	$phongfresnelranges         "[1 2.5 0.5]"
+	$phongtint                  "[.8 .8 1]"
+	$phongexponenttexture       "models/weapons/eminem/hammer/sandvik_normal"
+	$normalmapalphaphongmask    1
+
+	// ENVIRONMENT REFLECTION
+	$envmap                     env_cubemap
+	$envmaptint                 "[.02 .02 .02]"
+	$envmapfresnel              1
+	$envmapFresnelMinMaxExp     "[0 0 .5]"
+	$normalmapalphaenvmapmask   1
+}

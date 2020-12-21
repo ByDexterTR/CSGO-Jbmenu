@@ -1,0 +1,5 @@
+"vertexlitgeneric"
+{
+	"$basetexture" "models/weapons/kolka/None_Base_Color"
+	"$bumpmap" "models/weapons/kolka/None_Normal_DirectX"
+}

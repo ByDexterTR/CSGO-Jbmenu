@@ -1,0 +1,12 @@
+"VertexLitGeneric"
+{
+	"$basetexture" 					"models/weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/fire"
+
+	"$phong" 						"1"
+	"$phongboost"					"1"
+	"$phongfresnelranges"			"[0.1 0.23 0.945]"
+	"$phongdisablehalflambert"		"1"
+	"$normalmapalphaenvmapmask"		"1"
+	"$envmapfresnel"				"1"
+	"$envmaptint"					"[.02 .02 .02]"
+}
