@@ -103,7 +103,7 @@ public Plugin myinfo =
 	name = "Jbmenü", 
 	author = "ByDexter", 
 	description = "", 
-	version = "1.0", 
+	version = "1.0b", 
 	url = "https://steamcommunity.com/id/ByDexterTR - ByDexter#5494"
 };
 
@@ -1620,7 +1620,7 @@ public Action Timer_CheckDamage(Handle timer, any iEntity)
 		{
 			GetClientAbsOrigin(i, fOrigin);
 			if (GetVectorDistance(fSmokeOrigin, fOrigin) <= 220)
-				DealDamage(i, g_zehirlismokehasar.FloatValue, client, DMG_POISON, "weapon_smokegrenade");
+				DealDamage(i, g_zehirlismokehasar.IntValue, client, DMG_POISON, "weapon_smokegrenade");
 		}
 	}
 	return Plugin_Continue;
@@ -1765,7 +1765,7 @@ public Action OnClientSpawn(Event event, const char[] name, bool dontBroadcast)
 	}
 }
 
-stock void DealDamage(int nClientVictim, float nDamage, int nClientAttacker = 0, int nDamageType = DMG_GENERIC, char sWeapon[] = "")
+stock void DealDamage(int nClientVictim, int nDamage, int nClientAttacker = 0, int nDamageType = DMG_GENERIC, char sWeapon[] = "")
 {
 	if (nClientVictim > 0 && 
 		IsValidEdict(nClientVictim) && 
