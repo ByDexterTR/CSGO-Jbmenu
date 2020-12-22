@@ -81,7 +81,7 @@ Cs 1.6 ile jailbreak moduna giren T oyuncularının kullanıp isyan attığı Jb
 - sm_jbmenu_hucrekapi_ozelligi -> İsyan menüde Hücre kapısını bozma olsun mu ?
 
 - sm_jbmenu_deprem_ucret -> İsyan menü auto strafe ücreti
-- sm_jbmenu_deprem_ucret -> İsyan menü X saniye deprem ücreti
+- sm_jbmenu_autostrafe_ucret -> İsyan menü X saniye deprem ücreti
 - sm_jbmenu_deagle_ucret -> İsyan menü X mermili deagle bombası ücreti
 - sm_jbmenu_whbombasi_ucret -> İsyan menü wall hack bombası ücreti
 - sm_jbmenu_saglikasisi_ucret -> İsyan menü sağlık aşısı ücreti

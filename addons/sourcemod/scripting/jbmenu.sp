@@ -170,7 +170,7 @@ public void OnPluginStart()
 	g_canlanmaozelligi = CreateConVar("sm_jbmenu_canlanma_ozelligi", "1", "İsyan menüde yeniden canlanma olsun mu ?", 0, true, 0.0, true, 1.0);
 	g_hucrekapisiozelligi = CreateConVar("sm_jbmenu_hucrekapi_ozelligi", "1", "İsyan menüde Hücre kapısını bozma olsun mu ?", 0, true, 0.0, true, 1.0);
 	
-	g_autostrafeucret = CreateConVar("sm_jbmenu_deprem_ucret", "800", "İsyan menü auto strafe ücreti", 0, true, 1.0);
+	g_autostrafeucret = CreateConVar("sm_jbmenu_autostrafe_ucret", "800", "İsyan menü auto strafe ücreti", 0, true, 1.0);
 	g_depremucret = CreateConVar("sm_jbmenu_deprem_ucret", "300", "İsyan menü X saniye deprem ücreti", 0, true, 1.0);
 	g_deagleucret = CreateConVar("sm_jbmenu_deagle_ucret", "400", "İsyan menü X mermili deagle bombası ücreti", 0, true, 1.0);
 	g_whbombaucret = CreateConVar("sm_jbmenu_whbombasi_ucret", "300", "İsyan menü wall hack bombası ücreti", 0, true, 1.0);
