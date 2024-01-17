@@ -76,22 +76,22 @@ g_kutsallavhasar = null,
 g_kutsallavucret = null, 
 g_kutsallavaktif = null;
 
-bool Kullanildi[MAXPLAYERS] =  { false, ... }, 
-AutoStrafer[MAXPLAYERS] =  { false, ... }, 
-KasaActimi[MAXPLAYERS] =  { false, ... }, 
-MeslekKullandimi[MAXPLAYERS] =  { false, ... }, 
-Teleportlayicibomba[MAXPLAYERS] =  { false, ... }, 
-zehirlismokeasahip[MAXPLAYERS] =  { false, ... }, 
-Avci[MAXPLAYERS] =  { false, ... };
+bool Kullanildi[65] = { false, ... }, 
+AutoStrafer[65] = { false, ... }, 
+KasaActimi[65] = { false, ... }, 
+MeslekKullandimi[65] = { false, ... }, 
+Teleportlayicibomba[65] = { false, ... }, 
+zehirlismokeasahip[65] = { false, ... }, 
+Avci[65] = { false, ... };
 
-float g_LastGain[MAXPLAYERS];
+float g_LastGain[65];
 
-Handle h_timer[MAXPLAYERS] = null, 
-h_hirsiztimer[MAXPLAYERS] = null;
+Handle h_timer[65] = { null, ... }, 
+h_hirsiztimer[65] = { null, ... };
 
-int Meslegi[MAXPLAYERS] =  { 0, ... }, 
-Customknife[MAXPLAYERS] =  { 0, ... }, 
-Dakika[MAXPLAYERS] =  { 0, ... }, 
+int Meslegi[65] = { 0, ... }, 
+Customknife[65] = { 0, ... }, 
+Dakika[65] = { 0, ... }, 
 g_sprite = -1, 
 g_HaloSprite = -1;
 
@@ -103,7 +103,7 @@ public Plugin myinfo =
 	name = "Jbmenü", 
 	author = "ByDexter", 
 	description = "", 
-	version = "1.0b", 
+	version = "1.0c", 
 	url = "https://steamcommunity.com/id/ByDexterTR - ByDexter#5494"
 };
 
@@ -111,7 +111,7 @@ public void OnPluginStart()
 {
 	LoadTranslations("common.phrases");
 	HookEvent("round_start", RoundStart, EventHookMode_PostNoCopy);
-	HookEvent("round_end", HayattaKalanlar, EventHookMode_PostNoCopy);
+	HookEvent("round_end", RoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnClientDead, EventHookMode_PostNoCopy);
 	HookEvent("player_spawn", OnClientSpawn, EventHookMode_PostNoCopy);
 	HookEvent("smokegrenade_detonate", SmokeGrenade_Detonate, EventHookMode_Post);
@@ -213,7 +213,7 @@ public void OnPluginStart()
 	AutoExecConfig(true, "Jbmenu", "ByDexter");
 	
 	for (int i = 1; i <= MaxClients; i++)if (IsValidClient(i))
-		OnClientCookiesCached(i);
+		OnClientPostAdminCheck(i);
 }
 
 public void OnMapStart()
@@ -246,14 +246,15 @@ public void OnMapStart()
 	PrecacheAndModelDownloader2("weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/w_goteor_frost");
 	PrecacheAndModelDownloader2("weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/v_goteor_fire");
 	PrecacheAndModelDownloader2("weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/w_goteor_fire");
+	
+	CreateTimer(60.0, DakikaHesapla, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 }
 
-public void OnClientCookiesCached(int client)
+public void OnClientPostAdminCheck(int client)
 {
 	if (IsValidClient(client))
 	{
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-		CreateTimer(60.0, DakikaHesapla, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 		AutoStrafer[client] = false;
 		Kullanildi[client] = false;
 		KasaActimi[client] = false;
@@ -264,7 +265,7 @@ public void OnClientCookiesCached(int client)
 		Meslegi[client] = 0;
 		Dakika[client] = 0;
 		Customknife[client] = 0;
-		char sBuffer[512];
+		char sBuffer[20];
 		Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 		if (strcmp(sBuffer, "", false) == 0)
 		{
@@ -276,7 +277,7 @@ public void OnClientCookiesCached(int client)
 
 public Action Command_JB(int client, int args)
 {
-	char sBuffer[512];
+	char sBuffer[20];
 	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 	if (!g_kredishowtype.BoolValue)
 		PrintToChat(client, "[SM] Mevcut TL: \x04%d", StringToInt(sBuffer));
@@ -288,194 +289,147 @@ public Action Command_JB(int client, int args)
 
 public Action Command_JBDuzelt(int client, int args)
 {
-	if (args != 2)
+	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Kullanım: sm_jbduzelt <Hedef> <Miktar>");
 		return Plugin_Handled;
 	}
-	else
+	
+	char arg1[128];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	int target = FindTarget(client, arg1, true, true);
+	if (target <= 0)
 	{
-		char arg1[192];
-		GetCmdArg(1, arg1, sizeof(arg1));
-		int target = FindTarget(client, arg1, true, true);
-		if (target == COMMAND_TARGET_NONE || target == COMMAND_TARGET_AMBIGUOUS || target == COMMAND_TARGET_IMMUNE)
-		{
-			ReplyToTargetError(client, target);
-			return Plugin_Handled;
-		}
-		else
-		{
-			char arg2[192];
-			GetCmdArg(2, arg2, sizeof(arg2));
-			if (!IsValidClient(target))
-			{
-				ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
-				return Plugin_Handled;
-			}
-			else
-			{
-				char sBuffer[512];
-				Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
-				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(arg2));
-				Cookie_Kredi.Set(target, sBuffer);
-				PrintToChatAll("[SM] \x10%N \x01admin \x10%N \x01kişisinin TLsini \x04%d \x01olarak düzeltti!", client, target, StringToInt(arg2));
-				return Plugin_Handled;
-			}
-		}
+		ReplyToTargetError(client, target);
+		return Plugin_Handled;
 	}
+	
+	char arg2[20];
+	GetCmdArg(2, arg2, sizeof(arg2));
+	if (StringToInt(arg2) < 0)
+	{
+		ReplyToCommand(client, "[SM] Belirlediğiniz miktar geçersiz! Kullanım: sm_jbduzelt <Hedef> <Miktar>");
+		return Plugin_Handled;
+	}
+	
+	char sBuffer[20];
+	Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(arg2));
+	Cookie_Kredi.Set(target, sBuffer);
+	PrintToChatAll("[SM] \x10%N\x01: \x10%N \x01TL'si \x04%d \x01olarak ayarlandı!", client, target, StringToInt(arg2));
+	return Plugin_Handled;
+	
 }
 
 
 public Action Command_JBAl(int client, int args)
 {
-	if (args != 2)
+	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Kullanım: sm_jbal <Hedef> <Miktar>");
 		return Plugin_Handled;
 	}
-	else
+	
+	char arg1[128];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	int target = FindTarget(client, arg1, true, true);
+	if (target <= 0)
 	{
-		char arg1[192];
-		GetCmdArg(1, arg1, sizeof(arg1));
-		int target = FindTarget(client, arg1, true, true);
-		if (target == COMMAND_TARGET_NONE || target == COMMAND_TARGET_AMBIGUOUS || target == COMMAND_TARGET_IMMUNE)
-		{
-			ReplyToTargetError(client, target);
-			return Plugin_Handled;
-		}
-		else
-		{
-			char arg2[192];
-			GetCmdArg(2, arg2, sizeof(arg2));
-			if (StringToInt(arg2) <= 0)
-			{
-				ReplyToCommand(client, "[SM] 0'dan büyük bir değer girmelisin!");
-				return Plugin_Handled;
-			}
-			else
-			{
-				if (!IsValidClient(target))
-				{
-					ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
-					return Plugin_Handled;
-				}
-				else
-				{
-					char sBuffer[512];
-					Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
-					FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - StringToInt(arg2));
-					Cookie_Kredi.Set(target, sBuffer);
-					PrintToChatAll("[SM] \x10%N \x01admin \x10%N \x01kişisinden \x04%d \x01TL aldı!", client, target, StringToInt(arg2));
-					return Plugin_Handled;
-				}
-			}
-		}
+		ReplyToTargetError(client, target);
+		return Plugin_Handled;
 	}
+	
+	char arg2[20];
+	GetCmdArg(2, arg2, sizeof(arg2));
+	if (StringToInt(arg2) < 0)
+	{
+		ReplyToCommand(client, "[SM] Belirlediğiniz miktar geçersiz! Kullanım: sm_jbal <Hedef> <Miktar>");
+		return Plugin_Handled;
+	}
+	
+	char sBuffer[20];
+	Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - StringToInt(arg2));
+	Cookie_Kredi.Set(target, sBuffer);
+	PrintToChatAll("[SM] \x10%N\x01: \x10%N \x04%d \x01TL alındı!", client, target, StringToInt(arg2));
+	return Plugin_Handled;
 }
 
 public Action Command_JBVer(int client, int args)
 {
-	if (args != 2)
+	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Kullanım: sm_jbver <Hedef> <Miktar>");
 		return Plugin_Handled;
 	}
-	else
+	
+	char arg1[128];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	int target = FindTarget(client, arg1, true, true);
+	if (target <= 0)
 	{
-		char arg1[192];
-		GetCmdArg(1, arg1, sizeof(arg1));
-		int target = FindTarget(client, arg1, true, true);
-		if (target == COMMAND_TARGET_NONE || target == COMMAND_TARGET_AMBIGUOUS || target == COMMAND_TARGET_IMMUNE)
-		{
-			ReplyToTargetError(client, target);
-			return Plugin_Handled;
-		}
-		else
-		{
-			char arg2[192];
-			GetCmdArg(2, arg2, sizeof(arg2));
-			if (StringToInt(arg2) <= 0)
-			{
-				ReplyToCommand(client, "[SM] 0'dan büyük bir değer girmelisin!");
-				return Plugin_Handled;
-			}
-			else
-			{
-				if (!IsValidClient(target))
-				{
-					ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
-					return Plugin_Handled;
-				}
-				else
-				{
-					char sBuffer[512];
-					Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
-					FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + StringToInt(arg2));
-					Cookie_Kredi.Set(target, sBuffer);
-					PrintToChatAll("[SM] \x10%N \x01admin \x10%N \x01kişisine \x04%d \x01TL verdi!", client, target, StringToInt(arg2));
-					return Plugin_Handled;
-				}
-			}
-		}
+		ReplyToTargetError(client, target);
+		return Plugin_Handled;
 	}
+	
+	char arg2[20];
+	GetCmdArg(2, arg2, sizeof(arg2));
+	if (StringToInt(arg2) < 0)
+	{
+		ReplyToCommand(client, "[SM] Belirlediğiniz miktar geçersiz! Kullanım: sm_jbver <Hedef> <Miktar>");
+		return Plugin_Handled;
+	}
+	
+	
+	char sBuffer[20];
+	Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + StringToInt(arg2));
+	Cookie_Kredi.Set(target, sBuffer);
+	PrintToChatAll("[SM] \x10%N\x01: \x10%N \x04%d \x01TL verildi!", client, target, StringToInt(arg2));
+	return Plugin_Handled;
 }
 
 public Action Command_JBHediye(int client, int args)
 {
-	if (args != 2)
+	if (args < 2)
 	{
 		ReplyToCommand(client, "[SM] Kullanım: sm_jbhediye <Hedef> <Miktar>");
 		return Plugin_Handled;
 	}
-	else
+	
+	char arg1[128];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	int target = FindTarget(client, arg1, true, false);
+	if (target <= 0)
 	{
-		char arg1[192];
-		GetCmdArg(1, arg1, sizeof(arg1));
-		int target = FindTarget(client, arg1, true, false);
-		if (target == COMMAND_TARGET_NONE || target == COMMAND_TARGET_AMBIGUOUS)
-		{
-			ReplyToTargetError(client, target);
-			return Plugin_Handled;
-		}
-		else
-		{
-			char arg2[192];
-			GetCmdArg(2, arg2, sizeof(arg2));
-			if (StringToInt(arg2) <= 0)
-			{
-				ReplyToCommand(client, "[SM] 0'dan büyük bir değer girmelisin!");
-				return Plugin_Handled;
-			}
-			else
-			{
-				if (!IsValidClient(target))
-				{
-					ReplyToCommand(client, "[SM] Hedeflediğiniz oyuncu geçersiz!");
-					return Plugin_Handled;
-				}
-				else
-				{
-					char sBuffer[512];
-					Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
-					if (StringToInt(sBuffer) >= StringToInt(arg2))
-					{
-						FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - StringToInt(arg2));
-						Cookie_Kredi.Set(client, sBuffer);
-						Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
-						FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + StringToInt(arg2));
-						Cookie_Kredi.Set(target, sBuffer);
-						PrintToChatAll("[SM] \x10%N\x01, \x10%N \x01kişisine \x04%d \x01TL hediye etti!", client, target, StringToInt(arg2));
-						return Plugin_Handled;
-					}
-					else
-					{
-						ReplyToCommand(client, "[SM] O kadar TLen yok, Mevcut TL: %d", StringToInt(sBuffer));
-						return Plugin_Handled;
-					}
-				}
-			}
-		}
+		ReplyToTargetError(client, target);
+		return Plugin_Handled;
 	}
+	
+	char arg2[20];
+	GetCmdArg(2, arg2, sizeof(arg2));
+	if (StringToInt(arg2) < 0)
+	{
+		ReplyToCommand(client, "[SM] Belirlediğiniz miktar geçersiz! Kullanım: sm_jbal <Hedef> <Miktar>");
+		return Plugin_Handled;
+	}
+	
+	char sBuffer[20];
+	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
+	if (StringToInt(sBuffer) < StringToInt(arg2))
+	{
+		ReplyToCommand(client, "[SM] Mevcut TL: \x04%d", StringToInt(sBuffer));
+		return Plugin_Handled;
+		
+	}
+	
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - StringToInt(arg2));
+	Cookie_Kredi.Set(client, sBuffer);
+	Cookie_Kredi.Get(target, sBuffer, sizeof(sBuffer));
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + StringToInt(arg2));
+	Cookie_Kredi.Set(target, sBuffer);
+	PrintToChatAll("[SM] \x10%N\x01: \x10%N \x04%d \x01TL hediye edildi!", client, target, StringToInt(arg2));
+	return Plugin_Handled;
 }
 
 public Action Command_JBMenu(int client, int args)
@@ -485,27 +439,17 @@ public Action Command_JBMenu(int client, int args)
 		ReplyToCommand(client, "[SM] Bu menüye erişiminiz yok.");
 		return Plugin_Handled;
 	}
-	else
-	{
-		if (args != 0)
-		{
-			ReplyToCommand(client, "[SM] Kullanım: sm_jbmenu");
-			return Plugin_Handled;
-		}
-		else
-		{
-			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
-			return Plugin_Handled;
-		}
-	}
+	
+	Jbmenu(client).Display(client, MENU_TIME_FOREVER);
+	return Plugin_Handled;
 }
 
 Menu Jbmenu(int client)
 {
-	char sBuffer[512], MenuFormat[256];
+	char sBuffer[20], MenuFormat[256];
 	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 	Menu menu = new Menu(Menu_CallBack);
-	menu.SetTitle("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n        ★ Jail Menü ★\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+	menu.SetTitle("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n        ★ JB Menü ★\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 	menu.AddItem("0", "Bıçak Menü");
 	menu.AddItem("1", "İsyan Menü");
 	menu.AddItem("2", "Meslek Menü");
@@ -535,44 +479,35 @@ public int Menu_CallBack(Menu menu, MenuAction action, int client, int position)
 		{
 			char Item[4];
 			menu.GetItem(position, Item, sizeof(Item));
-			if (strcmp(Item, "0", false) == 0)
-			{
+			int item = StringToInt(Item);
+			if (item == 0)
 				Bicakmenu(client).Display(client, MENU_TIME_FOREVER);
-			}
-			else if (strcmp(Item, "1", false) == 0)
-			{
+			else if (item == 1)
 				Isyanmenu(client).Display(client, MENU_TIME_FOREVER);
-			}
-			else if (strcmp(Item, "2", false) == 0)
-			{
+			else if (item == 2)
 				Meslekmenu(client).Display(client, MENU_TIME_FOREVER);
-			}
-			else if (strcmp(Item, "3", false) == 0)
-			{
+			else if (item == 3)
 				Gorevmenu().Display(client, MENU_TIME_FOREVER);
-			}
-			else if (strcmp(Item, "4", false) == 0)
-			{
+			else if (item == 4)
 				Sansmenu(client).Display(client, MENU_TIME_FOREVER);
-			}
-			else if (strcmp(Item, "5", false) == 0)
+			else if (item == 5)
 			{
 				if (g_kanbagislamaozelligi.BoolValue && !Kullanildi[client])
 				{
 					if (GetClientHealth(client) > g_kanbagisi.IntValue)
 					{
 						SetEntityHealth(client, GetClientHealth(client) - g_kanbagisi.IntValue);
-						char sBuffer[512];
+						char sBuffer[20];
 						Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 						FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_kanbagis.IntValue);
 						Cookie_Kredi.Set(client, sBuffer);
 						Kullanildi[client] = true;
-						PrintToChat(client, "[SM] Kızılaya kan bağışladığın için +%d TL kazandın", g_kanbagis.IntValue);
+						PrintToChat(client, "[SM] Kızılaya kan bağışladığın için +\x04%d\x01 TL kazandın", g_kanbagis.IntValue);
 						Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 					}
 					else
 					{
-						PrintToChat(client, "[SM] Yeterli Can miktarın yok!");
+						PrintToChat(client, "[SM] Yeterli Canın yok!");
 					}
 				}
 				else
@@ -587,11 +522,12 @@ public int Menu_CallBack(Menu menu, MenuAction action, int client, int position)
 	{
 		delete menu;
 	}
+	return 0;
 }
 
 Menu Bicakmenu(int client)
 {
-	char Secenek[128], sBuffer[512];
+	char Secenek[128], sBuffer[20];
 	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 	Menu menu = new Menu(Menu6_Callback);
 	menu.SetTitle("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n        ★ Bıçak Menü ★\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
@@ -645,6 +581,7 @@ Menu Bicakmenu(int client)
 	}
 	else
 		menu.AddItem("4", "Kutsal Ateş Bıçağı [ KAPALI ]", ITEMDRAW_DISABLED);
+	
 	menu.ExitBackButton = false;
 	menu.ExitButton = true;
 	return menu;
@@ -654,10 +591,11 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 {
 	if (action == MenuAction_Select)
 	{
-		char Item[4], sBuffer[512];
+		char Item[4], sBuffer[20];
 		menu.GetItem(position, Item, sizeof(Item));
 		Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
-		if (strcmp(Item, "0", false) == 0)
+		int item = StringToInt(Item);
+		if (item == 0)
 		{
 			if (g_levyeaktif.BoolValue && IsPlayerAlive(client) && Customknife[client] == 0)
 			{
@@ -675,7 +613,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "1", false) == 0)
+		else if (item == 1)
 		{
 			if (g_cekicaktif.BoolValue && IsPlayerAlive(client) && Customknife[client] == 0)
 			{
@@ -685,7 +623,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 				int NayfW = PrecacheModel("models/weapons/eminem/hammer/w_hammer.mdl");
 				FPVMI_AddViewModelToClient(client, "weapon_knife", NayfV);
 				FPVMI_AddWorldModelToClient(client, "weapon_knife", NayfW);
-				PrintToChat(client, "[SM] Çekiç satın aldın.");
+				PrintToChat(client, "[SM] \x04Çekiç\x01 satın aldın.");
 				Customknife[client] = 2;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_cekicucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -693,7 +631,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "2", false) == 0)
+		else if (item == 2)
 		{
 			if (g_suikastaktif.BoolValue && StringToInt(sBuffer) >= g_suikastucret.IntValue && IsPlayerAlive(client) && Customknife[client] == 0)
 			{
@@ -703,7 +641,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 				int NayfW = PrecacheModel("models/weapons/kolka/w_cyberknife.mdl");
 				FPVMI_AddViewModelToClient(client, "weapon_knife", NayfV);
 				FPVMI_AddWorldModelToClient(client, "weapon_knife", NayfW);
-				PrintToChat(client, "[SM] Suikastçı bıçağı satın aldın.");
+				PrintToChat(client, "[SM] \x04Suikastçı bıçağı\x01 satın aldın.");
 				Customknife[client] = 3;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_suikastucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -711,7 +649,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "3", false) == 0)
+		else if (item == 3)
 		{
 			if (g_kutsalbuzaktif.BoolValue && StringToInt(sBuffer) >= g_kutsalbuzucret.IntValue && IsPlayerAlive(client) && Customknife[client] == 0)
 			{
@@ -721,7 +659,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 				int NayfW = PrecacheModel("models/weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/w_goteor_frost.mdl");
 				FPVMI_AddViewModelToClient(client, "weapon_knife", NayfV);
 				FPVMI_AddWorldModelToClient(client, "weapon_knife", NayfW);
-				PrintToChat(client, "[SM] Kutsal buz bıçağı satın aldın.");
+				PrintToChat(client, "[SM] \x04Kutsal buz bıçağı\x01 satın aldın.");
 				Customknife[client] = 4;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_kutsalbuzucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -729,7 +667,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "4", false) == 0)
+		else if (item == 4)
 		{
 			if (g_kutsallavaktif.BoolValue && StringToInt(sBuffer) >= g_kutsallavucret.IntValue && IsPlayerAlive(client) && Customknife[client] == 0)
 			{
@@ -739,7 +677,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 				int NayfW = PrecacheModel("models/weapons/eminem/dota2/knife/grace_of_the_eminence_of_ristul/w_goteor_fire.mdl");
 				FPVMI_AddViewModelToClient(client, "weapon_knife", NayfV);
 				FPVMI_AddWorldModelToClient(client, "weapon_knife", NayfW);
-				PrintToChat(client, "[SM] Kutsal ateş bıçağı satın aldın.");
+				PrintToChat(client, "[SM] \x04Kutsal ateş bıçağı\x01 satın aldın.");
 				Customknife[client] = 5;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_kutsallavucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -757,6 +695,7 @@ public int Menu6_Callback(Menu menu, MenuAction action, int client, int position
 		if (position == MenuCancel_Exit)
 			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 	}
+	return 0;
 }
 
 Menu Gorevmenu()
@@ -786,6 +725,7 @@ public int Menu5_CallBack(Menu menu, MenuAction action, int client, int position
 		if (position == MenuCancel_Exit)
 			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 	}
+	return 0;
 }
 
 public Action Hizduzelt(Handle timer, int userid)
@@ -795,33 +735,29 @@ public Action Hizduzelt(Handle timer, int userid)
 	{
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
 	}
+	return Plugin_Stop;
 }
 
-public Action DakikaHesapla(Handle timer, int userid)
+public Action DakikaHesapla(Handle timer)
 {
-	int client = GetClientOfUserId(userid);
-	if (IsValidClient(client))
+	for (int i = 1; i <= MaxClients; i++)if (IsValidClient(i))
 	{
-		Dakika[client]++;
-		if (Dakika[client] >= g_aktifoynamasure.IntValue)
+		Dakika[i]++;
+		if (Dakika[i] >= g_aktifoynamasure.IntValue)
 		{
-			Dakika[client] = 0;
-			char sBuffer[512];
-			Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
+			Dakika[i] = 0;
+			char sBuffer[20];
+			Cookie_Kredi.Get(i, sBuffer, sizeof(sBuffer));
 			FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_aktifoynamaodul.IntValue);
-			Cookie_Kredi.Set(client, sBuffer);
+			Cookie_Kredi.Set(i, sBuffer);
 		}
-	}
-	else
-	{
-		return Plugin_Stop;
 	}
 	return Plugin_Continue;
 }
 
 Menu Isyanmenu(int client)
 {
-	char Secenek[128], sBuffer[512];
+	char Secenek[128], sBuffer[20];
 	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
 	Menu menu = new Menu(Menu4_CallBack);
 	menu.SetTitle("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n        ★ Isyan Menü ★\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
@@ -957,7 +893,8 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 		char Item[4], sBuffer[512];
 		menu.GetItem(position, Item, sizeof(Item));
 		Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
-		if (strcmp(Item, "0", false) == 0)
+		int item = StringToInt(Item);
+		if (item == 0)
 		{
 			if (g_hucrekapisiozelligi.BoolValue && StringToInt(sBuffer) >= g_hucrekapiacmaucret.IntValue)
 			{
@@ -972,31 +909,31 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 					if (strcmp(classname, "func_wall_toggle", false) == 0 || strcmp(classname, "func_breakable", false) == 0)
 						RemoveEntity(j);
 				}
-				PrintToChatAll("[SM] \x10%N \x01adlı isyancı kapıları bozdu!", client);
+				PrintToChatAll("[SM] \x10%N: \x01kapıları bozdu!", client);
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_hucrekapiacmaucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
 			}
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "1", false) == 0)
+		else if (item == 1)
 		{
 			if (g_autostrafeaktif.BoolValue && StringToInt(sBuffer) >= g_autostrafeucret.IntValue && !AutoStrafer[client])
 			{
 				AutoStrafer[client] = true;
-				PrintToChat(client, "[SM] \x01Otomatik bunny yapma satın aldın.");
-				PrintToChat(client, "[SM] \x01Sadece zıplayıp gideceğin yere bakman yeterli.");
+				PrintToChat(client, "[SM] \x04Otomatik bunny yapma\x01 satın aldın.");
+				PrintToChat(client, "[SM] \x0FSadece zıplayıp gideceğin yere bakman yeterli.");
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_autostrafeucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
 			}
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "2", false) == 0)
+		else if (item == 2)
 		{
 			if (g_canlanmaozelligi.BoolValue && StringToInt(sBuffer) >= g_canlanmaucret.IntValue && !IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] Yeniden canlandın!");
+				PrintToChat(client, "[SM] \x04Yeniden canlandın\x01!");
 				CS_RespawnPlayer(client);
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_canlanmaucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -1004,11 +941,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "3", false) == 0)
+		else if (item == 3)
 		{
 			if (g_isinlanmabombaozelligi.BoolValue && StringToInt(sBuffer) >= g_teleportgrenadeucret.IntValue && !zehirlismokeasahip[client] && !Teleportlayicibomba[client] && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] Işınlanma smoke bombası aldın!");
+				PrintToChat(client, "[SM] \x04Işınlanma smoke bombası\x01 aldın!");
 				GivePlayerItem(client, "weapon_smokegrenade");
 				Teleportlayicibomba[client] = true;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_teleportgrenadeucret.IntValue);
@@ -1017,11 +954,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "4", false) == 0)
+		else if (item == 4)
 		{
 			if (g_zehirligazbombasiozelligi.BoolValue && StringToInt(sBuffer) >= g_zehirlismokeucret.IntValue && !zehirlismokeasahip[client] && !Teleportlayicibomba[client] && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] Zehirli smoke bombası aldın!");
+				PrintToChat(client, "[SM] \x04Zehirli smoke bombası\x01 aldın!");
 				GivePlayerItem(client, "weapon_smokegrenade");
 				zehirlismokeasahip[client] = true;
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_zehirlismokeucret.IntValue);
@@ -1030,11 +967,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "5", false) == 0)
+		else if (item == 5)
 		{
 			if (g_gorunmezlikozelligi.BoolValue && StringToInt(sBuffer) >= g_gorunmezlikucret.IntValue && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] %d saniye kimse göremez seni!", g_gorunmezliksure.IntValue);
+				PrintToChat(client, "[SM] %d saniye \x04görünmez oldun\x01!", g_gorunmezliksure.IntValue);
 				SDKHook(client, SDKHook_SetTransmit, SetTransmit);
 				CreateTimer(g_gorunmezliksure.FloatValue, gorunmezlikal, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_gorunmezlikucret.IntValue);
@@ -1043,12 +980,12 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "6", false) == 0)
+		else if (item == 6)
 		{
 			if (g_hizlikosmaozelligi.BoolValue && StringToInt(sBuffer) >= g_hizlikosmaucret.IntValue && IsPlayerAlive(client))
 			{
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.5);
-				PrintToChat(client, "[SM] %d saniye boyunca hızlı koşacaksın!", g_hizlikosmasureis.IntValue);
+				PrintToChat(client, "[SM] %d saniye \x04hızlı koşacaksın\x01!", g_hizlikosmasureis.IntValue);
 				CreateTimer(g_hizlikosmasureis.FloatValue, speedal, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_hizlikosmaucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -1056,23 +993,23 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "7", false) == 0)
+		else if (item == 7)
 		{
 			if (g_gardiyandondurmaozelligi.BoolValue && StringToInt(sBuffer) >= g_gardiyandondurucret.IntValue)
 			{
 				ServerCommand("sm_freeze @ct %d", g_gardiyandondurmasure.IntValue);
-				PrintToChatAll("[SM] \x10%N \x01tarafından \x04%d saniye \x01gardiyanlar donduruldu!", client, g_gardiyandondurmasure.IntValue);
+				PrintToChatAll("[SM] \x10%N\x01: %d saniye \x04gardiyanlar donduruldu\x01!", client, g_gardiyandondurmasure.IntValue);
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_gardiyandondurucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
 			}
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "8", false) == 0)
+		else if (item == 8)
 		{
 			if (g_saglikasisiozelligi.BoolValue && StringToInt(sBuffer) >= g_saglikasisiucret.IntValue && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] Sağlık aşısı satın aldın!");
+				PrintToChat(client, "[SM] \x04Sağlık aşısı\x01 satın aldın!");
 				GivePlayerItem(client, "weapon_healthshot");
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_saglikasisiucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -1080,11 +1017,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "9", false) == 0)
+		else if (item == 9)
 		{
 			if (g_whbombasiozelligi.BoolValue && StringToInt(sBuffer) >= g_whbombaucret.IntValue && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] Wall hack bombası satın aldın!");
+				PrintToChat(client, "[SM] \x04Wall hack bombası\x01 satın aldın!");
 				GivePlayerItem(client, "weapon_tagrenade");
 				FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) - g_whbombaucret.IntValue);
 				Cookie_Kredi.Set(client, sBuffer);
@@ -1092,11 +1029,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "10", false) == 0)
+		else if (item == 10)
 		{
 			if (g_deagleozelligi.BoolValue && StringToInt(sBuffer) >= g_deagleucret.IntValue && IsPlayerAlive(client))
 			{
-				PrintToChat(client, "[SM] %d Mermili deagle satın aldın!", g_deaglemermi.IntValue);
+				PrintToChat(client, "[SM] %d Mermili \x04deagle\x01 satın aldın!", g_deaglemermi.IntValue);
 				int Silahi = GivePlayerItem(client, "weapon_deagle");
 				SetEntProp(Silahi, Prop_Data, "m_iClip1", g_deaglemermi.IntValue);
 				SetEntProp(Silahi, Prop_Send, "m_iPrimaryReserveAmmoCount", 0);
@@ -1107,11 +1044,11 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Hata algılandı, tekrar deneyin.");
 		}
-		else if (strcmp(Item, "11", false) == 0)
+		else if (item == 11)
 		{
 			if (g_depremozelligi.BoolValue && StringToInt(sBuffer) >= g_depremucret.IntValue)
 			{
-				PrintToChat(client, "[SM] \x10%N \x01%d saniye deprem yaptı.", client, g_depremsure.IntValue);
+				PrintToChat(client, "[SM] \x10%N: \x01%d saniye \x04deprem yaptı\x01!", client, g_depremsure.IntValue);
 				for (int i = 1; i <= MaxClients; i++)if (IsValidClient(i) && IsPlayerAlive(i))
 				{
 					EkranTitreme(i, 10.0, 10000.0, g_depremsure.FloatValue + 1.0, 80.0);
@@ -1132,16 +1069,17 @@ public int Menu4_CallBack(Menu menu, MenuAction action, int client, int position
 		if (position == MenuCancel_Exit)
 			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 	}
+	return 0;
 }
 
 public Action speedal(Handle timer, int userid)
 {
-	int yilanyapkendini = GetClientOfUserId(userid);
-	if (IsValidClient(yilanyapkendini))
+	int client = GetClientOfUserId(userid);
+	if (IsValidClient(client))
 	{
-		SetEntPropFloat(yilanyapkendini, Prop_Data, "m_flLaggedMovementValue", 1.0);
-		PrintToChat(yilanyapkendini, "[SM] Bir anda yavaşladın tıssssss.");
+		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
 	}
+	return Plugin_Stop;
 }
 
 public Action gorunmezlikal(Handle timer, int userid)
@@ -1150,8 +1088,9 @@ public Action gorunmezlikal(Handle timer, int userid)
 	if (IsValidClient(client))
 	{
 		SDKUnhook(client, SDKHook_SetTransmit, SetTransmit);
-		PrintToChat(client, "[SM] Görünmezliğin sona erdi.");
+		PrintToChat(client, "[SM] \x04Görünmezliğin\x01 sona erdi.");
 	}
+	return Plugin_Stop;
 }
 
 public Action SetTransmit(int entity, int client)
@@ -1289,7 +1228,8 @@ public int Menu3_CallBack(Menu menu, MenuAction action, int client, int position
 				}
 			}
 		}
-		if (strcmp(Item, "0", false) == 0)
+		int item = StringToInt(Item);
+		if (item == 0)
 		{
 			if (g_meslekavci.BoolValue)
 			{
@@ -1300,7 +1240,7 @@ public int Menu3_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Bu meslek kapalı: Avcı");
 		}
-		else if (strcmp(Item, "1", false) == 0)
+		else if (item == 1)
 		{
 			if (g_meslekhirsiz.BoolValue)
 			{
@@ -1313,7 +1253,7 @@ public int Menu3_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Bu meslek kapalı: Hırsız");
 		}
-		else if (strcmp(Item, "2", false) == 0)
+		else if (item == 2)
 		{
 			if (g_meslekbombaci.BoolValue)
 			{
@@ -1325,7 +1265,7 @@ public int Menu3_CallBack(Menu menu, MenuAction action, int client, int position
 			else
 				PrintToChat(client, "[SM] Bu meslek kapalı: Bombacı");
 		}
-		else if (strcmp(Item, "3", false) == 0)
+		else if (item == 3)
 		{
 			if (g_meslekterminator.BoolValue)
 			{
@@ -1347,19 +1287,23 @@ public int Menu3_CallBack(Menu menu, MenuAction action, int client, int position
 		if (position == MenuCancel_Exit)
 			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 	}
+	return 0;
 }
 
 public Action Krediver(Handle timer, int userid)
 {
 	int client = GetClientOfUserId(userid);
-	if (IsValidClient(client))
+	if (!IsValidClient(client) || Meslegi[client] != 2)
 	{
-		char sBuffer[512];
-		Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
-		FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_hirsizodulu.IntValue);
-		Cookie_Kredi.Set(client, sBuffer);
-		PrintToChat(client, "[SM] Hırsız ödülü kazandın +%d TL", g_hirsizodulu.IntValue);
+		h_hirsiztimer[client] = null;
+		return Plugin_Stop;
 	}
+	char sBuffer[512];
+	Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
+	FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_hirsizodulu.IntValue);
+	Cookie_Kredi.Set(client, sBuffer);
+	PrintToChat(client, "[SM] Hırsız ödülü kazandın +%d TL", g_hirsizodulu.IntValue);
+	return Plugin_Continue;
 }
 
 public void ConVarChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
@@ -1379,7 +1323,7 @@ public void ConVarChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
 			}
 		}
 	}
-	if (cvar == g_meslekbombaci)
+	else if (cvar == g_meslekbombaci)
 	{
 		if (!g_meslekbombaci.BoolValue)
 		{
@@ -1394,7 +1338,7 @@ public void ConVarChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
 			}
 		}
 	}
-	if (cvar == g_meslekhirsiz)
+	else if (cvar == g_meslekhirsiz)
 	{
 		if (!g_meslekhirsiz.BoolValue)
 		{
@@ -1409,7 +1353,7 @@ public void ConVarChanged(ConVar cvar, const char[] oldVal, const char[] newVal)
 			}
 		}
 	}
-	if (cvar == g_meslekavci)
+	else if (cvar == g_meslekavci)
 	{
 		if (!g_meslekavci.BoolValue)
 		{
@@ -1450,7 +1394,8 @@ public int Menu2_CallBack(Menu menu, MenuAction action, int client, int position
 	{
 		char Item[4];
 		menu.GetItem(position, Item, sizeof(Item));
-		if (strcmp(Item, "0", false) == 0)
+		int item = StringToInt(Item);
+		if (item == 0)
 		{
 			char sBuffer[512];
 			Cookie_Kredi.Get(client, sBuffer, sizeof(sBuffer));
@@ -1512,6 +1457,7 @@ public int Menu2_CallBack(Menu menu, MenuAction action, int client, int position
 		if (position == MenuCancel_Exit)
 			Jbmenu(client).Display(client, MENU_TIME_FOREVER);
 	}
+	return 0;
 }
 
 public Action HizAl(Handle timer, int userid)
@@ -1545,7 +1491,7 @@ public Action SmokeGrenade_Detonate(Event event, const char[] name, bool dontBro
 			int iEntity = CreateEntityByName("light_dynamic");
 			if (iEntity == -1)
 			{
-				return;
+				return Plugin_Stop;
 			}
 			float DetonateOrigin[3];
 			DetonateOrigin[0] = event.GetFloat("x");
@@ -1577,12 +1523,15 @@ public Action SmokeGrenade_Detonate(Event event, const char[] name, bool dontBro
 			zehirlismokeasahip[client] = false;
 		}
 	}
+	return Plugin_Continue;
 }
 
 public Action Delete(Handle timer, any entity)
 {
 	if (IsValidEntity(entity))
 		RemoveEntity(entity);
+	
+	return Plugin_Stop;
 }
 
 public void OnEntityCreated(int iEntity, const char[] classname)
@@ -1649,6 +1598,7 @@ public Action RoundStart(Event event, const char[] name, bool dontBroadcast)
 		}
 		zehirlismokeasahip[i] = false;
 	}
+	return Plugin_Continue;
 }
 
 public Action OnClientDead(Event event, const char[] name, bool dontBroadcast)
@@ -1683,6 +1633,7 @@ public Action OnClientDead(Event event, const char[] name, bool dontBroadcast)
 			}
 		}
 	}
+	return Plugin_Continue;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3])
@@ -1734,15 +1685,16 @@ public float NormalizeAngle(float angle)
 	return temp;
 }
 
-public Action HayattaKalanlar(Event event, const char[] name, bool dontBroadcast)
+public Action RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	char sBuffer[512];
+	char sBuffer[20];
 	for (int i = 1; i <= MaxClients; i++)if (IsValidClient(i) && GetClientTeam(i) == CS_TEAM_T && IsPlayerAlive(i))
 	{
 		Cookie_Kredi.Get(i, sBuffer, sizeof(sBuffer));
 		FormatEx(sBuffer, sizeof(sBuffer), "%d", StringToInt(sBuffer) + g_hayattkalmaodul.IntValue);
 		Cookie_Kredi.Set(i, sBuffer);
 	}
+	return Plugin_Continue;
 }
 
 public Action OnClientSpawn(Event event, const char[] name, bool dontBroadcast)
@@ -1763,9 +1715,10 @@ public Action OnClientSpawn(Event event, const char[] name, bool dontBroadcast)
 			SetEntProp(client, Prop_Data, "m_ArmorValue", g_terminatorarmor.IntValue, 4);
 		}
 	}
+	return Plugin_Continue;
 }
 
-stock void DealDamage(int nClientVictim, int nDamage, int nClientAttacker = 0, int nDamageType = DMG_GENERIC, char sWeapon[] = "")
+void DealDamage(int nClientVictim, int nDamage, int nClientAttacker = 0, int nDamageType = DMG_GENERIC, char[] sWeapon = "")
 {
 	if (nClientVictim > 0 && 
 		IsValidEdict(nClientVictim) && 
@@ -1797,7 +1750,7 @@ stock void DealDamage(int nClientVictim, int nDamage, int nClientAttacker = 0, i
 	}
 }
 
-stock void EkranTitreme(int client, float Amplitude, float Radius, float Duration, float Frequency)
+void EkranTitreme(int client, float Amplitude, float Radius, float Duration, float Frequency)
 {
 	float ClientOrigin[3];
 	int Ent = CreateEntityByName("env_shake");
@@ -1817,7 +1770,7 @@ stock void EkranTitreme(int client, float Amplitude, float Radius, float Duratio
 	}
 }
 
-stock bool IsValidClient(int client, bool nobots = true)
+bool IsValidClient(int client, bool nobots = true)
 {
 	if (client <= 0 || client > MaxClients || !IsClientConnected(client) || (nobots && IsFakeClient(client)))
 	{
@@ -1828,7 +1781,7 @@ stock bool IsValidClient(int client, bool nobots = true)
 
 stock void PrecacheAndModelDownloader(char[] sModelname)
 {
-	char sBuffer[PLATFORM_MAX_PATH];
+	char sBuffer[256];
 	Format(sBuffer, sizeof(sBuffer), "models/%s.dx90.vtx", sModelname);
 	AddFileToDownloadsTable(sBuffer);
 	Format(sBuffer, sizeof(sBuffer), "models/%s.mdl", sModelname);
@@ -1842,7 +1795,7 @@ stock void PrecacheAndModelDownloader(char[] sModelname)
 
 stock void PrecacheAndModelDownloader2(char[] sModelname)
 {
-	char sBuffer[PLATFORM_MAX_PATH];
+	char sBuffer[256];
 	Format(sBuffer, sizeof(sBuffer), "models/%s.dx90.vtx", sModelname);
 	AddFileToDownloadsTable(sBuffer);
 	Format(sBuffer, sizeof(sBuffer), "models/%s.mdl", sModelname);
@@ -1854,7 +1807,7 @@ stock void PrecacheAndModelDownloader2(char[] sModelname)
 
 stock void PrecacheAndMaterialDownloader(char[] sMaterialname)
 {
-	char sBuffer[PLATFORM_MAX_PATH];
+	char sBuffer[256];
 	Format(sBuffer, sizeof(sBuffer), "materials/%s.vmt", sMaterialname);
 	AddFileToDownloadsTable(sBuffer);
 	Format(sBuffer, sizeof(sBuffer), "materials/%s.vtf", sMaterialname);
